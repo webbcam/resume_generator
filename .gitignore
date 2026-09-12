@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+.ruff_cache/
+dist/
+build/
+*.pdf
+*.html
+!tests/golden/*.html
+!src/resume_md/template.html
+examples/*.md
+!examples/sample.md
+*.swp
+*~
+.DS_Store
