@@ -116,7 +116,7 @@ def test_cli_strips_comments_keeps_wide_bullets_and_applies_font(tmp_path: Path)
     result = _run_cli(["render", str(src), "--html-only", "-o", str(out)])
     assert result.returncode == 0, result.stderr
     html = out.read_text(encoding="utf-8")
-    assert "font-family: Georgia" in html
+    assert "font-family: Georgia, serif" in html
     assert "Cambria, Palatino" not in html
     assert "<li>two spaces</li>" in html
     assert "<li>one space</li>" in html
@@ -130,7 +130,7 @@ def test_cli_strips_comments_keeps_wide_bullets_and_applies_font(tmp_path: Path)
     )
     assert result.returncode == 0, result.stderr
     html = overridden.read_text(encoding="utf-8")
-    assert 'font-family: "Example Sans"' in html
+    assert 'font-family: "Example Sans", sans-serif' in html
     assert "Georgia" not in html
 
 

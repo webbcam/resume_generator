@@ -76,6 +76,9 @@ def build_parser() -> argparse.ArgumentParser:
         "--font",
         help=(
             "CSS font-family value. Overrides front-matter font. "
+            "A single family gets a generic fallback "
+            "(serif, monospace, or sans-serif); "
+            "a comma-separated stack is used as given. "
             'Default: Cambria, Palatino, "Palatino Linotype", Georgia, serif. '
             "Example: --font '\"Example Sans\", sans-serif'"
         ),
@@ -95,7 +98,10 @@ def build_parser() -> argparse.ArgumentParser:
         type=_positive_int,
         default=None,
         metavar="N",
-        help="Exit non-zero if the PDF has more than N pages",
+        help=(
+            "Exit non-zero if the PDF has more than N pages. "
+            "The PDF is still written."
+        ),
     )
     render.add_argument(
         "--preview",

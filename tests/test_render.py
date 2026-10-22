@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from resume_md.parse import parse_resume
-from resume_md.render import markdown_to_html, render_html
+from resume_md.render import DEFAULT_FONT_FAMILY, css_font_family, markdown_to_html, render_html
 
 ROOT = Path(__file__).resolve().parents[1]
 SAMPLE_MD = ROOT / "examples" / "sample.md"
@@ -107,8 +107,33 @@ def test_front_matter_font_replaces_cambria_stack():
 def test_font_argument_overrides_front_matter_and_quotes_a_family():
     md = "---\nfont: Georgia\n---\n# Jane\n\nCity · a@b.c\n"
     html = markdown_to_html(md, font="Example Sans")
-    assert html.count('font-family: "Example Sans"') == 2
+    assert html.count('font-family: "Example Sans", sans-serif') == 2
     assert "Georgia" not in html
+
+
+def test_single_family_gets_a_generic_fallback():
+    assert css_font_family(None) == DEFAULT_FONT_FAMILY
+    assert css_font_family("Example Sans") == '"Example Sans", sans-serif'
+    assert css_font_family('"Example Sans"') == '"Example Sans", sans-serif'
+    assert css_font_family("Georgia") == "Georgia, serif"
+    assert css_font_family("Times New Roman") == '"Times New Roman", serif'
+    assert css_font_family("Liberation Mono") == '"Liberation Mono", monospace'
+    assert css_font_family("Inter") == "Inter, sans-serif"
+    assert css_font_family("sans-serif") == "sans-serif"
+    assert css_font_family("serif") == "serif"
+
+    md = "---\nfont: Georgia\n---\n# Jane\n\nCity · a@b.c\n"
+    html = markdown_to_html(md)
+    assert html.count("font-family: Georgia, serif") == 2
+    assert "Cambria, Palatino" not in html
+
+
+def test_explicit_font_stack_is_not_rewritten():
+    stack = '"Example Sans", serif'
+    assert css_font_family(stack) == stack
+    html = markdown_to_html("# Jane\n\nCity · a@b.c\n", font=stack)
+    assert html.count(f"font-family: {stack}") == 2
+    assert "sans-serif" not in html
 
 
 def test_invalid_font_is_rejected():

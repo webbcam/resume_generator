@@ -15,7 +15,7 @@ uv run resume-md render resume.md -o resume.pdf --font '"Example Sans", sans-ser
 uv run resume-md render resume.md -o resume.pdf --preview resume.png --timeout 60
 ```
 
-`--font` is a CSS `font-family` value and overrides front matter. The default is the Cambria stack, so existing resumes do not change. `--timeout` (or `RESUME_MD_TIMEOUT`, default 180) kills Chrome, including its child processes, if printing stalls. A missing or empty PDF is an error even when Chrome exits 0. After a successful print the CLI reports the page count (`resume.pdf: 1 page (12345 bytes)`). `--max-pages N` exits non-zero when the PDF is longer than that. `--preview` writes a first-page PNG and needs `pdftoppm`.
+`--font` is a CSS `font-family` value and overrides front matter. The default is the Cambria stack, so existing resumes do not change. A single family (no comma) gets a generic fallback: `serif` for known serif faces (such as Georgia, Cambria, Palatino, and Times New Roman) and for names ending in "serif", `monospace` when the name contains "mono", and `sans-serif` otherwise. A comma-separated stack is used exactly as written. `--timeout` (or `RESUME_MD_TIMEOUT`, default 180) kills Chrome, including its child processes, if printing stalls. A missing or empty PDF is an error even when Chrome exits 0. After a successful print the CLI reports the page count (`resume.pdf: 1 page (12345 bytes)`). `--max-pages N` still writes the PDF, then exits non-zero when the PDF is longer than N. Check the exit code: a PDF on disk does not mean the page limit was met. `--preview` writes a first-page PNG and needs `pdftoppm`.
 
 ## Markdown dialect
 
@@ -73,8 +73,8 @@ Rules:
 - Lists are bullets. The marker (`-`, `*`, or `+`) is followed by one or more spaces or tabs, so `-  item` is still a bullet.
 - `**bold**` and `_italic_` work as usual.
 - A line of `---`, `***`, or `___` inside a section is a horizontal rule (`<hr>`). Section heads do not draw a rule unless you insert one.
-- HTML comments (`<!-- ... -->`) are stripped, including comments that span lines. They do not nest. An unclosed `<!--` is an error. A comment is not resume text, so `<!--` in a line will not appear in the output.
-- Front matter is optional. A leading `---` fence may set `font` to a CSS `font-family` value. No other keys are read. Without it, the Cambria stack is used.
+- HTML comments (`<!-- ... -->`) are stripped, including comments that span lines. They do not nest. An unclosed `<!--` is an error that reports the line. A comment is not resume text, so `<!--` in a line will not appear in the output.
+- Front matter is optional. A leading `---` fence may set `font` to a CSS `font-family` value. A single family gets the same generic fallback as `--font`; a comma-separated stack is kept as written. No other keys are read. Without it, the Cambria stack is used.
 
 ```markdown
 ---
