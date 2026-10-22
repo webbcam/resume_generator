@@ -7,7 +7,15 @@ uv run resume-md render resume.md -o resume.pdf
 uv run resume-md render resume.md --html-only -o resume.html
 ```
 
-HTML is written next to the PDF (same stem) unless you pass `--html path`. `--html-only` skips Chrome. Chrome is detected at `CHROME` or `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`.
+HTML is written next to the PDF (same stem) unless you pass `--html path`. `--html-only` skips Chrome. Chrome is `CHROME`, Google Chrome on macOS, or `google-chrome` / `chromium` on `PATH`.
+
+```bash
+uv run resume-md render resume.md -o resume.pdf --max-pages 1
+uv run resume-md render resume.md -o resume.pdf --font '"Example Sans", sans-serif'
+uv run resume-md render resume.md -o resume.pdf --preview resume.png --timeout 60
+```
+
+`--font` is a CSS `font-family` value and overrides front matter. The default is the Cambria stack, so existing resumes do not change. `--timeout` (or `RESUME_MD_TIMEOUT`, default 180) kills Chrome, including its child processes, if printing stalls. A missing or empty PDF is an error even when Chrome exits 0. After a successful print the CLI reports the page count (`resume.pdf: 1 page (12345 bytes)`). `--max-pages N` exits non-zero when the PDF is longer than that. `--preview` writes a first-page PNG and needs `pdftoppm`.
 
 ## Markdown dialect
 
@@ -62,9 +70,17 @@ Rules:
 - The first paragraph after H1 is contact. Split on ` · ` (also accept ` | `). Joined with ` ◆ ` in HTML.
 - H2 is a section, H3 is an employer, H4 is a skill group.
 - A non-list, non-heading line containing ` | ` is a left/right row (role/date or school/location). Split on the **last** ` | `. The left side is italic if the source used `_…_` or `*…*`.
-- Lists are bullets. `**bold**` and `_italic_` work as usual.
+- Lists are bullets. The marker (`-`, `*`, or `+`) is followed by one or more spaces or tabs, so `-  item` is still a bullet.
+- `**bold**` and `_italic_` work as usual.
 - A line of `---`, `***`, or `___` inside a section is a horizontal rule (`<hr>`). Section heads do not draw a rule unless you insert one.
-- No YAML front matter in v1.
+- HTML comments (`<!-- ... -->`) are stripped, including comments that span lines. They do not nest. An unclosed `<!--` is an error. A comment is not resume text, so `<!--` in a line will not appear in the output.
+- Front matter is optional. A leading `---` fence may set `font` to a CSS `font-family` value. No other keys are read. Without it, the Cambria stack is used.
+
+```markdown
+---
+font: "Example Sans", sans-serif
+---
+```
 
 A fictional fixture lives at `examples/sample.md`. Do not commit a real personal resume (`examples/private.md` is gitignored).
 

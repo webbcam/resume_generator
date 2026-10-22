@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from resume_md.model import (
@@ -14,6 +15,31 @@ from resume_md.model import (
 from resume_md.parse import parse_resume
 
 _TEMPLATE_PATH = Path(__file__).with_name("template.html")
+
+# Default stack. Existing resumes render with this unless --font or front matter overrides it.
+DEFAULT_FONT_FAMILY = 'Cambria, Palatino, "Palatino Linotype", Georgia, serif'
+
+_FONT_FORBIDDEN = re.compile(r"[{}<>;\\\n\r]")
+
+
+def css_font_family(value: str | None) -> str:
+    """Return a CSS ``font-family`` list. None selects the Cambria stack.
+
+    A value that contains a comma, or that is already quoted, is used as the
+    full list. A single family name with spaces is wrapped in double quotes.
+    """
+    if value is None:
+        return DEFAULT_FONT_FAMILY
+    text = value.strip()
+    if not text:
+        raise ValueError("font family is empty")
+    if _FONT_FORBIDDEN.search(text):
+        raise ValueError(f"invalid font family: {text!r}")
+    if "," in text or text[0] in "\"'":
+        return text
+    if any(ch.isspace() for ch in text):
+        return f'"{text}"'
+    return text
 
 
 def esc(text: str) -> str:
@@ -91,8 +117,11 @@ def render_body(resume: Resume) -> str:
     return "\n".join(parts)
 
 
-def render_html(resume: Resume) -> str:
+def render_html(resume: Resume, *, font_family: str | None = None) -> str:
+    chosen = font_family if font_family is not None else resume.font
+    family = css_font_family(chosen)
     template = _TEMPLATE_PATH.read_text(encoding="utf-8")
+    template = template.replace("{{ font_family }}", family)
     return (
         template.replace("{{ title }}", esc(resume.name))
         .replace("{{ body }}", render_body(resume))
@@ -100,5 +129,6 @@ def render_html(resume: Resume) -> str:
     )
 
 
-def markdown_to_html(markdown: str) -> str:
-    return render_html(parse_resume(markdown))
+def markdown_to_html(markdown: str, *, font: str | None = None) -> str:
+    """Render markdown. ``font`` overrides front-matter ``font`` when given."""
+    return render_html(parse_resume(markdown), font_family=font)

@@ -60,3 +60,5 @@ class Resume:
     name: str
     contact: list[str]
     sections: list[Section] = field(default_factory=list)
+    # CSS font-family from front matter, or None for the Cambria default.
+    font: str | None = None
