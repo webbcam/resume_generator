@@ -18,7 +18,7 @@ Typography:
 | Skill group labels | Cambria Bold | 9pt |
 | Page | US Letter | content starts ~0.25–0.45in from edges |
 
-CSS `font-family: Cambria, Palatino, "Palatino Linotype", Georgia, serif`. Do not embed a subset TTF extracted from the PDF (missing glyphs).
+CSS `font-family` defaults to `Cambria, Palatino, "Palatino Linotype", Georgia, serif`. Override the whole list with `--font` or front-matter `font` (below). Do not embed a subset TTF extracted from the PDF (missing glyphs).
 
 ## Markdown dialect (document in README)
 
@@ -73,9 +73,11 @@ Rules:
 - First paragraph after H1 = contact. Split on ` · ` (also accept ` | `). Join with ` ◆ ` in HTML.
 - H2 = section, H3 = employer, H4 = skill group.
 - A **non-list, non-heading** line containing ` | ` is a left/right row (role/date or school/location). Split on the **last** ` | `. Italic left if the source used `_…_` / `*…*`.
-- Lists are bullets. `**bold**` and `_italic_` work as usual.
+- Lists are bullets. A marker (`-`, `*`, or `+`) followed by one or more spaces or tabs is a bullet, including two or more spaces (`-  item`) or a tab. A hyphen with no following whitespace (`-item`) is a paragraph.
+- `**bold**` and `_italic_` work as usual.
 - A line of `---`, `***`, or `___` inside a section is a horizontal rule. Section heads do not draw a rule unless you insert one.
-- No YAML required for v1.
+- HTML comments are stripped before parsing. `<!-- ... -->` may sit inline or span lines. Adjacent spaces and tabs collapse to one space; newlines outside the comment stay, so a comment on its own line does not join the lines around it. Comments do not nest (the first `-->` closes). An unclosed `<!--` is an error and names its line. Comment text must not appear in the HTML.
+- Front matter is optional. If the file begins with a `---` fence, the only key is `font`, whose value is a CSS `font-family` list. A single family with spaces is quoted automatically, then a generic fallback is appended: `serif` for known serif faces (Georgia, Cambria, Palatino, Times New Roman, and others) and names ending in "serif", `monospace` when the name contains "mono", and `sans-serif` otherwise. A lone generic family (`serif`, `sans-serif`, `monospace`, and the other CSS generics) is left unchanged. A comma-separated stack is used exactly as given. Unknown keys, a repeated `font`, an empty value, or a missing closing `---` are errors. The closing fence is the next line that is exactly `---`; later rules inside sections are unchanged. `--font` overrides the front-matter value and follows the same fallback rules. When neither is set, the Cambria stack above is used, on both `body` and `h1`.
 
 A fictional fixture lives in `examples/sample.md`. Real personal resumes stay local and gitignored (`examples/private.md`). Do not commit them.
 
@@ -84,19 +86,38 @@ A fictional fixture lives in `examples/sample.md`. Real personal resumes stay lo
 1. Parse Markdown → HTML with the dialect above.
 2. Wrap in a print stylesheet (`src/resume_md/template.html` + CSS).
 3. Write HTML next to the PDF (or `--html`).
-4. Print PDF via Chrome/Chromium headless:
+4. Print PDF via Chrome/Chromium headless. Detect Chrome at `CHROME`, then `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`, then `google-chrome`, `chromium`, `chromium-browser`, or `chrome` on `PATH`. `--html-only` skips Chrome (tests use this).
 
-```
-"$CHROME" --headless --disable-gpu --no-pdf-header-footer --print-to-pdf=OUT.pdf file://ABS.html
-```
+The print command always includes:
 
-Detect Chrome at `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome` and `CHROME` env. `--html-only` skips Chrome (tests use this).
+- `--headless=new`
+- `--disable-gpu`
+- `--disable-dev-shm-usage`
+- `--disable-software-rasterizer`
+- `--disable-extensions`
+- `--disable-background-networking`
+- `--disable-component-update`
+- `--disable-features=OptimizationGuideModelDownloading,OptimizationHints,Translate,MediaRouter`
+- `--disable-sync`
+- `--metrics-recording-only`
+- `--no-first-run`
+- `--no-default-browser-check`
+- `--no-pdf-header-footer`
+- `--user-data-dir` set to a fresh temporary directory (so a running Chrome profile is not reused)
+- `--print-to-pdf` of a partial file, moved into place only after a non-empty `%PDF` header is present
+- the `file://` URL of the HTML
+
+`--timeout SECONDS` (else `RESUME_MD_TIMEOUT`, else 180) bounds the run. On timeout the CLI sends SIGTERM to the Chrome process tree, then SIGKILL if it is still alive after 10 seconds. If Chrome writes a non-empty PDF and does not exit (for example because a launcher left a debugging port open), the CLI keeps that PDF and stops the process tree instead of waiting out the timeout. A missing, empty, or non-PDF result is an error even when Chrome exits 0; dbus noise on stderr is not, if the PDF was written. A previous PDF at the output path is left untouched when the new run fails.
+
+On success the CLI prints `PATH: 1 page (BYTES bytes)` or `PATH: N pages (BYTES bytes)`. `--max-pages N` exits non-zero, after the PDF is written, when the page count is greater than N. `--preview PNG` also writes a 110 dpi PNG of page 1 via `pdftoppm`.
 
 CLI:
 
 ```
 resume-md render resume.md -o resume.pdf
 resume-md render resume.md --html-only -o resume.html
+resume-md render resume.md -o resume.pdf --font '"Example Sans", sans-serif' --max-pages 1
+resume-md render resume.md -o resume.pdf --preview resume.png --timeout 60
 ```
 
 Python package: `pyproject.toml`, `src/resume_md/`, `uv`/`pip` installable, `python -m resume_md`.

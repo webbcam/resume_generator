@@ -1,7 +1,9 @@
 from pathlib import Path
 
+import pytest
+
 from resume_md.parse import parse_resume
-from resume_md.render import markdown_to_html, render_html
+from resume_md.render import DEFAULT_FONT_FAMILY, css_font_family, markdown_to_html, render_html
 
 ROOT = Path(__file__).resolve().parents[1]
 SAMPLE_MD = ROOT / "examples" / "sample.md"
@@ -66,10 +68,77 @@ def test_thematic_break_renders_as_hr():
 
 def test_stylesheet_uses_cambria_stack():
     html = render_html(parse_resume("# N\n\nC · e@x.c\n"))
-    assert 'font-family: Cambria, Palatino, "Palatino Linotype", Georgia, serif' in html
+    stack = 'font-family: Cambria, Palatino, "Palatino Linotype", Georgia, serif'
+    assert html.count(stack) == 2
     assert "24pt" in html
     assert "@page" in html
     assert "letter" in html
+
+
+def test_bullet_with_multiple_spaces_renders_as_list():
+    html = markdown_to_html("# N\n\nC · e@x.c\n\n## Profile\n\n-  two\n-   three\n")
+    assert "<li>two</li>" in html
+    assert "<li>three</li>" in html
+    assert "<p>-" not in html
+
+
+def test_comments_are_not_visible_text():
+    html = markdown_to_html(
+        "# Jane <!-- draft -->\n\nCity · a@b.c\n\n## Profile\n\n"
+        "**Hello <!-- secret --> world**\n"
+    )
+    assert "<strong>Hello world</strong>" in html
+    assert "<!--" not in html
+    assert "secret" not in html
+    assert "draft" not in html
+
+
+def test_front_matter_font_replaces_cambria_stack():
+    md = (
+        '---\nfont: "Example Sans", sans-serif\n---\n'
+        "# Jane\n\nCity · a@b.c\n"
+    )
+    html = markdown_to_html(md)
+    chosen = 'font-family: "Example Sans", sans-serif'
+    assert html.count(chosen) == 2
+    assert "Cambria, Palatino" not in html
+
+
+def test_font_argument_overrides_front_matter_and_quotes_a_family():
+    md = "---\nfont: Georgia\n---\n# Jane\n\nCity · a@b.c\n"
+    html = markdown_to_html(md, font="Example Sans")
+    assert html.count('font-family: "Example Sans", sans-serif') == 2
+    assert "Georgia" not in html
+
+
+def test_single_family_gets_a_generic_fallback():
+    assert css_font_family(None) == DEFAULT_FONT_FAMILY
+    assert css_font_family("Example Sans") == '"Example Sans", sans-serif'
+    assert css_font_family('"Example Sans"') == '"Example Sans", sans-serif'
+    assert css_font_family("Georgia") == "Georgia, serif"
+    assert css_font_family("Times New Roman") == '"Times New Roman", serif'
+    assert css_font_family("Liberation Mono") == '"Liberation Mono", monospace'
+    assert css_font_family("Inter") == "Inter, sans-serif"
+    assert css_font_family("sans-serif") == "sans-serif"
+    assert css_font_family("serif") == "serif"
+
+    md = "---\nfont: Georgia\n---\n# Jane\n\nCity · a@b.c\n"
+    html = markdown_to_html(md)
+    assert html.count("font-family: Georgia, serif") == 2
+    assert "Cambria, Palatino" not in html
+
+
+def test_explicit_font_stack_is_not_rewritten():
+    stack = '"Example Sans", serif'
+    assert css_font_family(stack) == stack
+    html = markdown_to_html("# Jane\n\nCity · a@b.c\n", font=stack)
+    assert html.count(f"font-family: {stack}") == 2
+    assert "sans-serif" not in html
+
+
+def test_invalid_font_is_rejected():
+    with pytest.raises(ValueError, match="invalid font family"):
+        markdown_to_html("# N\n\nC · e@x.c\n", font="Georgia; color: red")
 
 
 def test_golden_html_snapshot(request):

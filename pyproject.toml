@@ -22,7 +22,7 @@ build-backend = "hatchling.build"
 "src/resume_md/template.html" = "resume_md/template.html"
 
 [tool.pytest.ini_options]
-pythonpath = ["src"]
+pythonpath = ["src", "."]
 testpaths = ["tests"]
 addopts = "-q"
 
